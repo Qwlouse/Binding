@@ -33,7 +33,7 @@ def cfg():
     training = {
         'learning_rate': 0.01,
         'patience': 10,
-        'max_epochs': 200
+        'max_epochs': 500
     }
     em = {
         'nr_iters': 10,
@@ -144,13 +144,13 @@ def load_best_net(net_filename):
 
 
 @ex.capture(prefix='em')
-def get_initial_groups(k, dim, init_type, _rnd, low=.25, high=.75):
-    shape = (1, 1, dim, dim, 1, k)  # (T, B, H, W, C, K)
+def get_initial_groups(k, dims, init_type, _rnd, low=.25, high=.75):
+    shape = (1, 1, dims[0], dims[1], 1, k)  # (T, B, H, W, C, K)
     if init_type == 'spatial':
         assert k == 3
-        group_channels = np.zeros((dim, dim, 3))
-        group_channels[:, :, 0] = np.linspace(0, 0.5, dim).reshape(dim, 1)
-        group_channels[:, :, 1] = np.linspace(0, 0.5, dim).reshape(1, dim)
+        group_channels = np.zeros((dims[0], dims[1], 3))
+        group_channels[:, :, 0] = np.linspace(0, 0.5, dims[0])[:, None]
+        group_channels[:, :, 1] = np.linspace(0, 0.5, dims[1])[None, :]
         group_channels[:, :, 2] = 1.0 - group_channels.sum(2)
         group_channels = group_channels.reshape(shape)
     elif init_type == 'gaussian':
@@ -168,155 +168,6 @@ def get_likelihood(Y, T, group_channels):
     log_loss = T * np.log(Y.clip(1e-6, 1 - 1e-6)) + \
                (1 - T) * np.log((1 - Y).clip(1e-6, 1 - 1e-6))
     return np.sum(log_loss * group_channels)
-
-
-@ex.command(prefix='em')
-def evaluate(nr_iters, k, nr_samples, dump_results=None, dump_scores=None, nr_restarts=1):
-    network = load_best_net()
-    test_data, test_groups = get_test_data()
-    scores = []
-    confidences = []
-    nr_samples = min(nr_samples, test_data.shape[1])
-    in_feature_shape = test_data.shape[2:]
-    all_scores = np.zeros((nr_restarts, nr_iters+1, nr_samples, 4))
-    for r in range(nr_restarts):
-        results = np.zeros((nr_iters + 1, nr_samples) + test_data.shape[2:] + (k,))
-        likelihoods = np.zeros((2*nr_iters + 1, nr_samples))
-        Y_prior = np.ones(test_data[:, 0:1].shape + (k,)) * 0.5
-        scores = []
-        confidences = []
-        for i in range(nr_samples):
-            mixing_factors = np.ones((1, 1, 1, 1, k)) / k
-
-            x = test_data[:, i:i+1]   # (T, 1, 28, 28, 1)
-            g = test_groups[:, i:i+1]  # (T, 1, 28, 28, 1)
-            T = x[..., None]
-
-            if np.sum(g) == 0:  # if that sample has no objects: ignore it
-                continue
-            group_channels = get_initial_groups(dim=x.shape[2])
-            results[0:1, i:i+1, :] = group_channels
-
-            # save the initial log-likelihood
-            likelihoods[0, i] = get_likelihood(Y_prior, T, group_channels)
-            all_scores[r, 0, i, :2] = evaluate_groups(g.flatten(), group_channels.reshape(-1, k))
-            all_scores[r, 0, i, 2] = likelihoods[0, i]
-            for j in range(nr_iters):
-                X = group_channels * x[..., None]  # (T, 1, 28, 28, 1, 3)
-                Y = np.zeros_like(X)  # (T, 1, 28, 28, 1, 3)
-
-                # run the k copies of the autoencoder
-                for _k in range(k):
-                    network.provide_external_data({'default': X[..., _k],
-                                                   'targets': x})
-                    network.forward_pass()
-                    Y[..., _k] = network.get(network.output_name).reshape((1, 1) + in_feature_shape)
-
-                # save the log-likelihood after the M-step
-                likelihoods[2*j+1, i] = get_likelihood(Y, T, group_channels)
-
-                # perform an E-step
-                group_channels, mixing_factors = perform_e_step(T, Y, mixing_factors)
-
-                # save the log-likelihood after the E-step
-                likelihoods[2*j+2, i] = get_likelihood(Y, T, group_channels)
-
-                # save the resulting group-assignments
-                results[j+1, i] = group_channels[0, 0]
-
-                all_scores[r, j+1, i, :2] = evaluate_groups(g.flatten(), group_channels.reshape(-1, k))
-                all_scores[r, j+1, i, 2] = likelihoods[2*j+1, i]
-                all_scores[r, j+1, i, 3] = likelihoods[2*j+2, i]
-
-            # evaluate the groups
-            score, confidence = evaluate_groups(g.flatten(), group_channels.reshape(-1, k))
-            confidences.append(confidence)
-            scores.append(score)
-        scores = np.array(scores)
-        confidences = np.array(confidences)
-        print("{:.4f} {:.4f} {:.4f} / {:.4f}".format(
-            scores.min(), scores.mean(), scores.max(), confidences.mean()))
-
-    if dump_results is not None:
-        import pickle
-        with open(dump_results, 'wb') as f:
-            pickle.dump((scores, results, test_data[:, :nr_samples], confidences, likelihoods), f)
-        print('wrote the results to {}'.format(dump_results))
-    if dump_scores is not None:
-        import pickle
-        with open(dump_scores, 'wb') as f:
-            pickle.dump(all_scores, f)
-    return scores.mean(), confidences.mean()
-
-
-@ex.command(prefix='em')
-def convert(nr_iters, k, dest, nr_samples=1e12, splits=('training', 'test')):
-    network = load_best_net()
-    ds = open_dataset()
-    seg_ds = h5py.File(dest + '_segregated.h5', 'w')
-    rec_ds = h5py.File(dest + '_reconstructed.h5', 'w')
-    assert nr_iters > 0
-
-    for usage in splits:
-        data = ds[usage]['default'][:]
-        groups = ds[usage]['groups'][:]
-        segregated = np.zeros(data.shape + (k,))
-        reconstructed = np.zeros(data.shape + (k,))
-
-        nr_samples = min(nr_samples, data.shape[1])
-        in_feature_shape = data.shape[2:]
-        scores = []
-        confidences = []
-        for i in range(nr_samples):
-            mixing_factors = np.ones((1, 1, 1, 1, k)) / k
-
-            x = data[:, i:i+1]   # (T, 1, 28, 28, 1)
-            g = groups[:, i:i+1]  # (T, 1, 28, 28, 1)
-            T = x[..., None]
-
-            if np.sum(g) == 0:  # if that sample has no objects: ignore it
-                continue
-            group_channels = get_initial_groups(dim=x.shape[2])
-
-            for j in range(nr_iters):
-                X = group_channels * x[..., None]  # (T, 1, 28, 28, 1, 3)
-                Y = np.zeros_like(X)  # (T, 1, 28, 28, 1, 3)
-
-                # run the k copies of the autoencoder
-                for _k in range(k):
-                    network.provide_external_data({'default': X[..., _k],
-                                                   'targets': x})
-                    network.forward_pass()
-                    Y[..., _k] = network.get(network.output_name).reshape((1, 1) + in_feature_shape)
-
-                # perform an E-step
-                group_channels, mixing_factors = perform_e_step(T, Y, mixing_factors)
-
-            segregated[:, i] = group_channels * x[..., None]
-            reconstructed[:, i] = Y
-            score, confidence = evaluate_groups(g.flatten(), group_channels.reshape(-1, k))
-            confidences.append(confidence)
-            scores.append(score)
-        scores = np.array(scores)
-        confidences = np.array(confidences)
-        print("{:.4f} {:.4f} {:.4f} / {:.4f}".format(
-            scores.min(), scores.mean(), scores.max(), confidences.mean()))
-
-        seg_usg = seg_ds.create_group(usage)
-        seg_usg.create_dataset('default', data=segregated, compression='gzip', chunks=(1, 100) + in_feature_shape + (1,))
-        seg_usg.create_dataset('groups', data=groups, compression='gzip', chunks=(1, 100) + in_feature_shape)
-
-        rec_usg = rec_ds.create_group(usage)
-        rec_usg.create_dataset('default', data=reconstructed, compression='gzip', chunks=(1, 100) + in_feature_shape + (1,))
-        rec_usg.create_dataset('groups', data=groups, compression='gzip', chunks=(1, 100) + in_feature_shape)
-
-        if 'targets' in ds[usage]:
-            rec_usg.create_dataset('targets', data=ds[usage]['targets'][:], compression='gzip', chunks=(1, 100, 1))
-            seg_usg.create_dataset('targets', data=ds[usage]['targets'][:], compression='gzip', chunks=(1, 100, 1))
-
-    ds.close()
-    seg_ds.close()
-    rec_ds.close()
 
 
 @ex.capture(prefix='em')
@@ -340,6 +191,79 @@ def perform_e_step(T, Y, mixing_factors, e_step, k):
     return group_channels, mixing_factors
 
 
+@ex.command(prefix='em')
+def reconstruction_clustering(network, input_data, true_groups, k, nr_iters):
+    T, N, H, W, C = input_data.shape
+    input_data = input_data[..., None]  # add a cluster dimension
+
+    mixing_factors = np.ones((1, 1, 1, 1, k)) / k
+    gamma = get_initial_groups(dims=(H, W))
+    output_prior = np.ones_like(input_data) * 0.5
+
+    gammas = np.zeros((nr_iters + 1, 1, H, W, C, k))
+    likelihoods = np.zeros(2 * nr_iters + 1)
+    scores = np.zeros((nr_iters + 1, 2))
+
+    gammas[0:1] = gamma
+    likelihoods[0] = get_likelihood(output_prior, input_data, gamma)
+    scores[0] = evaluate_groups(true_groups.flatten(),
+                                    gamma.reshape(-1, k))
+
+    for j in range(nr_iters):
+        X = gamma * input_data
+        Y = np.zeros_like(X)
+
+        # run the k copies of the autoencoder
+        for _k in range(k):
+            network.provide_external_data({'default': X[..., _k],
+                                           'targets': input_data[..., 0]})
+            network.forward_pass()
+            Y[..., _k] = network.get(network.output_name).reshape((1, 1, H, W, C))
+
+        # save the log-likelihood after the M-step
+        likelihoods[2*j+1] = get_likelihood(Y, input_data, gamma)
+        # perform an E-step
+        gamma, mixing_factors = perform_e_step(input_data, Y, mixing_factors)
+        # save the log-likelihood after the E-step
+        likelihoods[2*j+2] = get_likelihood(Y, input_data, gamma)
+        # save the resulting group-assignments
+        gammas[j+1] = gamma[0]
+        # save the score and confidence
+        scores[j+1] = evaluate_groups(true_groups.flatten(),
+                                          gamma.reshape(-1, k))
+    return gammas, likelihoods, scores
+
+
+@ex.command(prefix='em')
+def evaluate(nr_samples, dump_results=None):
+    network = load_best_net()
+    test_data, test_groups = get_test_data()
+    all_scores = []
+    all_likelihoods = []
+    all_gammas = []
+    nr_samples = min(nr_samples, test_data.shape[1])
+    for i in range(nr_samples):
+        gammas, likelihoods, scores = reconstruction_clustering(
+                network, test_data[:, i:i+1], test_groups[:, i:i+1])
+        all_gammas.append(gammas)
+        all_likelihoods.append(likelihoods)
+        all_scores.append(scores)
+
+    all_gammas = np.array(all_gammas)
+    all_likelihoods = np.array(all_likelihoods)
+    all_scores = np.array(all_scores)
+
+    print('Average Score: {:.4f}'.format(all_scores[:, -1, 0].mean()))
+    print('Average Confidence: {:.4f}'.format(all_scores[:, -1, 1].mean()))
+
+    if dump_results is not None:
+        import pickle
+        with open(dump_results, 'wb') as f:
+            pickle.dump((all_scores, all_likelihoods, all_gammas), f)
+        print('wrote the results to {}'.format(dump_results))
+    return all_scores[:, -1, 0].mean()
+
+
 @ex.command
 def draw_net(filename='net.png'):
     network = create_network()
@@ -359,6 +283,4 @@ def run(net_filename):
     ex.add_artifact(net_filename)
 
     ex.info['best_val_loss'] = float(np.min(trainer.logs['validation']['total_loss']))
-    score, confidence = evaluate()
-    ex.info['confidence'] = confidence
-    return score
+    return evaluate()
