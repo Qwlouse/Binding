@@ -140,6 +140,7 @@ def evaluate_groups(true_groups, predicted):
 @ex.capture
 def load_best_net(net_filename):
     net = bs.Network.from_hdf5(net_filename)
+    net.output_name = "Output.outputs.predictions"
     return net
 
 
