@@ -43,3 +43,10 @@ Next we use these networks for Reconstruction Clustering and store all of the re
 
     run_evaluation.py
 
+WARNING: This will take up about 12 GBytes.
+
+## Plots
+The `Plots.ipynb` notebook generates all the figures used in the paper.
+Once you've run all the other steps you should be able to able to generate them
+all yourself.
+
