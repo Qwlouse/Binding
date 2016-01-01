@@ -43,7 +43,7 @@ Next we use these networks for Reconstruction Clustering and store all of the re
 
     run_evaluation.py
 
-WARNING: This will take up about 12 GBytes.
+NOTE: This will take up about 12 GBytes of disk space.
 
 ## Plots
 The `Plots.ipynb` notebook generates all the figures used in the paper.
