@@ -85,6 +85,12 @@ def create_network(network_spec, dataset):
 
 @ex.capture
 def create_trainer(training, net_filename, verbose):
+    import os
+    import os.path
+    dirname = os.path.dirname(net_filename)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
     trainer = bs.Trainer(bs.training.SgdStepper(training['learning_rate']),
                          verbose=verbose)
     trainer.train_scorers = [bs.scorers.Hamming()]
