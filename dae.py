@@ -40,7 +40,8 @@ def cfg():
         'k': 3,
         'nr_samples': 1000,
         'e_step': 'expectation',  # expectation, expectation_pi, max, or max_pi
-        'init_type': 'gaussian'   # gaussian, uniform, or spatial
+        'init_type': 'gaussian',  # gaussian, uniform, or spatial
+        'dump_results': None
     }
     network_spec = "F64"
     net_filename = 'Networks/binding_dae_{}_{}.h5'.format(
@@ -276,6 +277,11 @@ def draw_net(filename='net.png'):
     network = create_network()
     from brainstorm.tools import draw_network
     draw_network(network, filename)
+
+
+@ex.pre_run_hook
+def initialize(seed):
+    bs.global_rnd.set_seed(seed)
 
 
 @ex.automain

@@ -2,6 +2,27 @@
 
 This is the code repository complementing the paper ["Binding by Reconstruction Clustering"](http://arxiv.org/abs/1511.06418).
 
+## Demo Images
+Here are some animations of the convergence behaviour of Reconstruction Clustering.
+
+### Shapes
+![shapes animation](animations/shapes.gif)
+
+### Multi MNIST
+![Multi-MNIST animation](animations/multi_mnist.gif)
+
+### Corners
+![Corners animation](animations/corners.gif)
+
+### Bars
+![Bars animation](animations/bars.gif)
+
+### MNIST + Shape
+![MNIST + Shape animation](animations/mnist_shape.gif)
+
+### Simple Superposition
+![Simple Superposition animation](animations/simple_superpos.gif)
+
 ## Dependencies and Setup
 
 * brainstorm == 0.5
@@ -35,7 +56,11 @@ You can then look at the results using the `Get_Search_Results.ipynb` notebook.
 
 ## Train best Networks
 To get the best networks we used in the paper for each dataset run `run_best_nets.py`.
-It will save a `Networks/DATASET_best_dae.h5` network for each dataset.
+It will save a `Networks/DATASET_best_dae.h5` network for each dataset. This shouldn't take more than half an hour.
+
+Alternatively you can use your own best results from the random search by running the 
+last cell in the `Get_Search_Results.ipynb`.
+
 These files are needed for the following steps.
 
 ## Evaluation 
@@ -43,7 +68,7 @@ Next we use these networks for Reconstruction Clustering and store all of the re
 
     run_evaluation.py
 
-NOTE: This will take up about 12 GBytes of disk space.
+NOTE: This should take about an hour and use about 26 GBytes of disk space.
 
 ## Plots
 The `Plots.ipynb` notebook generates all the figures used in the paper.

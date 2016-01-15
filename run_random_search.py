@@ -3,8 +3,7 @@
 from __future__ import division, print_function, unicode_literals
 from sacred.observers import MongoObserver
 from dae import ex
-ex.observers.append(MongoObserver.create(db_name='binding',
-                                         prefix='random_search'))
+
 nr_runs_per_dataset = 100
 datasets = {
     'bars': 12, 
@@ -14,13 +13,18 @@ datasets = {
     'mnist_shape': 2,
     'simple_superpos':2
 }
+db_name = 'binding_via_rc'
 
+# Random search
+ex.observers = [MongoObserver.create(db_name=db_name, prefix='random_search')]
 for ds, k in datasets.items():
     for i in range(nr_runs_per_dataset):
         ex.run(config_updates={'dataset.name': ds, 'verbose': False, 'em.k': k},
                named_configs=['random_search'])
 
+
 # Multi-Train Runs
+ex.observers = [MongoObserver.create(db_name=db_name, prefix='train_multi')]
 for ds, k in datasets.items():
     if ds == "simple_superpos": continue
     for i in range(nr_runs_per_dataset):
@@ -32,7 +36,7 @@ for ds, k in datasets.items():
             'verbose': False}, named_configs=['random_search'])
 
 # MSE-Likelihood Runs
-ex.observers = [MongoObserver.create(db_name='binding', prefix='mse_likelihood')]
+ex.observers = [MongoObserver.create(db_name=db_name, prefix='mse_likelihood')]
 for ds, k in datasets.items():
     for i in range(nr_runs_per_dataset):
         ex.run(config_updates={
