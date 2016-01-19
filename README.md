@@ -4,7 +4,7 @@ This is the code repository complementing the paper ["Binding by Reconstruction 
 Everything from the paper starting from the datasets all the way to the plots can be
 reproduced from this repository.
 
-![shapes animation](animations/shapes.gif)
+![reconstruction clustering animated](animations/RC.gif)
 
 ## Dependencies and Setup
 
