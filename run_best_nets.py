@@ -3,18 +3,17 @@
 from __future__ import division, print_function, unicode_literals
 from dae import ex
 
-
 @ex.named_config
 def best_bars():
     dataset = {
         'name': 'bars',
-        'salt_n_pepper': 0.1
+        'salt_n_pepper': 0.0
     }
     training = {
-        'learning_rate': 0.0788887811150988
+        'learning_rate': 0.768014586935404
     }
-    seed = 915841892
-    network_spec = "Ft1000"
+    seed = 459182787
+    network_spec = "Fr100"
     net_filename = 'Networks/best_bars_dae.h5'
 
 ex.run(named_configs=['best_bars'])
@@ -24,13 +23,13 @@ ex.run(named_configs=['best_bars'])
 def best_corners():
     dataset = {
         'name': 'corners',
-        'salt_n_pepper': 0.2
+        'salt_n_pepper': 0.0
     }
     training = {
-        'learning_rate': 0.11338088391400022
+        'learning_rate': 0.0019199822609484764
     }
-    seed = 820141270
-    network_spec = "Fs500"
+    seed = 158253144
+    network_spec = "Fr100"
     net_filename = 'Networks/best_corners_dae.h5'
 
 ex.run(named_configs=['best_corners'])
@@ -40,13 +39,13 @@ ex.run(named_configs=['best_corners'])
 def best_shapes():
     dataset = {
         'name': 'shapes',
-        'salt_n_pepper': 0.3
+        'salt_n_pepper': 0.4
     }
     training = {
-        'learning_rate': 0.06701641168189125
+        'learning_rate': 0.08314720669724956
     }
-    seed = 533867354
-    network_spec = "Ft1000"
+    seed = 845841083
+    network_spec = "Ft500"
     net_filename = 'Networks/best_shapes_dae.h5'
 
 ex.run(named_configs=['best_shapes'])
@@ -56,13 +55,13 @@ ex.run(named_configs=['best_shapes'])
 def best_multi_mnist():
     dataset = {
         'name': 'multi_mnist',
-        'salt_n_pepper': 0.8
+        'salt_n_pepper': 0.6
     }
     training = {
-        'learning_rate': 0.004194304163542453
+        'learning_rate': 0.011361917579645924
     }
-    seed = 708383804
-    network_spec = "Fr500"
+    seed = 498470020
+    network_spec = "Fr1000"
     net_filename = 'Networks/best_multi_mnist_dae.h5'
 
 ex.run(named_configs=['best_multi_mnist'])
@@ -72,13 +71,13 @@ ex.run(named_configs=['best_multi_mnist'])
 def best_mnist_shape():
     dataset = {
         'name': 'mnist_shape',
-        'salt_n_pepper': 0.5
+        'salt_n_pepper': 0.6
     }
     training = {
-        'learning_rate': 0.011252506237215505
+        'learning_rate': 0.0316848152096582
     }
-    seed = 17521051
-    network_spec = "Fr250"
+    seed = 166717815
+    network_spec = "Fs250"
     net_filename = 'Networks/best_mnist_shape_dae.h5'
 
 ex.run(named_configs=['best_mnist_shape'])
@@ -91,10 +90,10 @@ def best_simple_superpos():
         'salt_n_pepper': 0.1
     }
     training = {
-        'learning_rate': 0.20713360779738232
+        'learning_rate': 0.36662702472680564
     }
-    seed = 563758549
-    network_spec = "Fr500"
+    seed = 848588405
+    network_spec = "Fr100"
     net_filename = 'Networks/best_simple_superpos_dae.h5'
 
 ex.run(named_configs=['best_simple_superpos'])
@@ -105,13 +104,13 @@ def best_bars_train_multi():
     dataset = {
         'name': 'bars',
         'train_set': 'train_multi',
-        'salt_n_pepper': 0.9
+        'salt_n_pepper': 0.8
     }
     training = {
-        'learning_rate': 0.07009646428972773
+        'learning_rate': 0.01219213699462807
     }
-    seed = 100618159
-    network_spec = "Ft100"
+    seed = 141786426
+    network_spec = "Fs100"
     net_filename = 'Networks/best_bars_dae_train_multi.h5'
 
 ex.run(named_configs=['best_bars_train_multi'])
@@ -122,13 +121,13 @@ def best_corners_train_multi():
     dataset = {
         'name': 'corners',
         'train_set': 'train_multi',
-        'salt_n_pepper': 0.5
+        'salt_n_pepper': 0.7
     }
     training = {
-        'learning_rate': 0.07329485079040306
+        'learning_rate': 0.02603487482829947
     }
-    seed = 242923369
-    network_spec = "Fr500"
+    seed = 872544498
+    network_spec = "Fr100"
     net_filename = 'Networks/best_corners_dae_train_multi.h5'
 
 ex.run(named_configs=['best_corners_train_multi'])
@@ -142,10 +141,10 @@ def best_shapes_train_multi():
         'salt_n_pepper': 0.9
     }
     training = {
-        'learning_rate': 0.023890872422966537
+        'learning_rate': 0.049401835193689486
     }
-    seed = 900380945
-    network_spec = "Ft500"
+    seed = 702200962
+    network_spec = "Fs100"
     net_filename = 'Networks/best_shapes_dae_train_multi.h5'
 
 ex.run(named_configs=['best_shapes_train_multi'])
@@ -159,9 +158,9 @@ def best_multi_mnist_train_multi():
         'salt_n_pepper': 0.9
     }
     training = {
-        'learning_rate': 0.0040886980876061
+        'learning_rate': 0.001785591525476118
     }
-    seed = 66747176
+    seed = 632224571
     network_spec = "Fs250"
     net_filename = 'Networks/best_multi_mnist_dae_train_multi.h5'
 
@@ -176,11 +175,12 @@ def best_mnist_shape_train_multi():
         'salt_n_pepper': 0.6
     }
     training = {
-        'learning_rate': 0.014119758147665773
+        'learning_rate': 0.033199614969711265
     }
-    seed = 767374347
+    seed = 900543563
     network_spec = "Fr1000"
     net_filename = 'Networks/best_mnist_shape_dae_train_multi.h5'
 
 ex.run(named_configs=['best_mnist_shape_train_multi'])
+
 
